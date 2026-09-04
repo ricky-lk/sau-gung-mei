@@ -1,0 +1,1455 @@
+<!DOCTYPE html>
+<html lang="zh-HK" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>收工未？</title>
+
+    <!-- PWA & Favicon -->
+    <link rel="icon" type="image/png" href="./icon.png">
+    <link rel="apple-touch-icon" href="./icon.png">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="收工未？">
+    <meta name="theme-color" content="#0A0D14">
+    <meta name="description" content="專為香港打工仔：Part-time、炒散及打造嘅「薪金計算同與心理慰藉神器」">
+    <link rel="manifest" href="./manifest.json">
+
+    <!-- Vue 3 -->
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;700;800&family=Noto+Sans+TC:wght@400;500;700&display=swap');
+        
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        /* 主題顏色變數 */
+        :root {
+            --bg-page: #F8F6F0;
+            --bg-card: #FFFFFF;
+            --bg-subtle: #F2EDE4;
+            --border: #E8E3D9;
+            --text-main: #2D2828;
+            --text-muted: #78716C;
+            --accent: #D97706;
+            --danger: #E11D48;
+            --success: #059669;
+        }
+
+        html.dark {
+            --bg-page: #0A0D14;
+            --bg-card: #121824;
+            --bg-subtle: #1A2234;
+            --border: #1E293B;
+            --text-main: #F1F5F9;
+            --text-muted: #94A3B8;
+            --accent: #F59E0B;
+            --danger: #F43F5E;
+            --success: #10B981;
+        }
+
+        html, body {
+            background-color: var(--bg-page);
+            color: var(--text-main);
+            font-family: 'Noto Sans TC', sans-serif;
+            min-height: 100vh;
+            user-select: none;
+            -webkit-user-select: none;
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+
+        .font-mono { font-family: 'JetBrains Mono', monospace; }
+
+        /* 🚨 核心修復：強制所有非計時圈的 SVG 圖標維持標準尺寸，絕對不許放大 */
+        svg:not(.timer-svg) {
+            width: 1.125rem !important;
+            height: 1.125rem !important;
+            min-width: 1.125rem !important;
+            min-height: 1.125rem !important;
+            max-width: 1.125rem !important;
+            max-height: 1.125rem !important;
+            display: inline-block !important;
+            vertical-align: middle !important;
+            flex-shrink: 0 !important;
+        }
+
+        .timer-svg {
+            width: 100% !important;
+            height: 100% !important;
+        }
+
+        input[type="time"], input[type="number"], input[type="text"] {
+            -webkit-appearance: none;
+            appearance: none;
+            outline: none;
+        }
+
+        /* 語意化佈局結構 */
+        .app-shell {
+            width: 100%;
+            max-width: 430px;
+            margin: 0 auto;
+            padding: 1.5rem 0.75rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .card-panel {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 1.5rem;
+            padding: 1.25rem;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+            position: relative;
+        }
+
+        /* Top Bar */
+        .topbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-bottom: 0.75rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .brand-box {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .brand-logo {
+            width: 1.5rem;
+            height: 1.5rem;
+            border-radius: 0.375rem;
+            object-fit: contain;
+        }
+
+        .brand-title {
+            font-size: 1rem;
+            font-weight: 700;
+            color: var(--accent);
+        }
+
+        .topbar-actions {
+            display: flex;
+            align-items: center;
+            gap: 0.375rem;
+        }
+
+        .btn-icon {
+            padding: 0.5rem;
+            border-radius: 0.75rem;
+            color: var(--text-muted);
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+        }
+        .btn-icon:hover {
+            background-color: var(--bg-subtle);
+        }
+
+        /* 休息按鈕組 */
+        .break-actions {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 0.625rem;
+            margin-top: 1rem;
+        }
+
+        .btn-break {
+            padding: 0.625rem 0.75rem;
+            border-radius: 1rem;
+            border: 1px solid var(--border);
+            background-color: var(--bg-subtle);
+            color: var(--text-main);
+            font-size: 0.75rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.375rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .btn-break:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+        .btn-break.active-toilet {
+            background-color: #D97706;
+            color: #FFFFFF;
+            font-weight: 700;
+        }
+        .btn-break.active-chill {
+            background-color: #B45309;
+            color: #FFFFFF;
+            font-weight: 700;
+        }
+        html.dark .btn-break.active-chill {
+            background-color: var(--accent);
+            color: #0A0D14;
+        }
+
+        /* 計時看板區 */
+        .timer-stage {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding-top: 0.75rem;
+            position: relative;
+        }
+
+        .standby-curtain {
+            position: absolute;
+            inset: 0;
+            z-index: 20;
+            background-color: var(--bg-card);
+            opacity: 0.9;
+            border-radius: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 1rem;
+        }
+
+        .timer-core {
+            position: relative;
+            width: 12rem;
+            height: 12rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .timer-caption {
+            position: absolute;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+        }
+
+        .badge-status {
+            font-size: 0.625rem;
+            padding: 0.125rem 0.625rem;
+            border-radius: 9999px;
+            margin-top: 0.25rem;
+            border: 1px solid var(--border);
+            background-color: var(--bg-subtle);
+            color: var(--text-muted);
+        }
+
+        .earnings-banner {
+            width: 100%;
+            margin-top: 1rem;
+            padding: 0.75rem 1rem;
+            border-radius: 1rem;
+            border: 1px solid var(--border);
+            background-color: var(--bg-subtle);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        .earning-col {
+            flex: 1;
+            min-width: 0;
+        }
+        .earning-col.text-right { text-align: right; }
+        .earning-col.text-left { text-align: left; }
+
+        .earning-subtitle {
+            font-size: 0.625rem;
+            color: var(--text-muted);
+            margin-bottom: 0.125rem;
+            display: block;
+        }
+
+        .earning-value {
+            font-size: 1.25rem;
+            font-weight: 800;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            display: block;
+        }
+
+        /* 主要按鈕 */
+        .cta-wrapper {
+            margin-top: 1rem;
+        }
+
+        .btn-cta {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            border-radius: 1rem;
+            border: none;
+            font-size: 0.875rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            cursor: pointer;
+            transition: transform 0.15s ease, opacity 0.2s ease;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+        .btn-cta:active { transform: scale(0.98); }
+        .btn-cta.start { background-color: #D97706; color: #FFFFFF; }
+        .btn-cta.stop { background-color: var(--danger); color: #FFFFFF; }
+        .btn-cta.reset { background-color: #44403C; color: #FFFFFF; }
+
+        /* 開銷卡片 */
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid var(--border);
+            font-size: 0.75rem;
+        }
+
+        .expense-row {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-top: 0.5rem;
+        }
+
+        .input-text {
+            background-color: var(--bg-subtle);
+            border: 1px solid var(--border);
+            color: var(--text-main);
+            border-radius: 0.75rem;
+            padding: 0.375rem 0.625rem;
+            font-size: 0.75rem;
+        }
+
+        .btn-outline-dashed {
+            width: 100%;
+            padding: 0.5rem;
+            border-radius: 0.75rem;
+            border: 1px dashed var(--accent);
+            color: var(--accent);
+            background: transparent;
+            font-size: 0.75rem;
+            font-weight: 700;
+            cursor: pointer;
+            margin-top: 0.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.25rem;
+        }
+
+        .summary-divider {
+            margin-top: 0.75rem;
+            padding-top: 0.75rem;
+            border-top: 1px dashed var(--border);
+            display: flex;
+            flex-direction: column;
+            gap: 0.375rem;
+        }
+
+        /* 歷史紀錄卡片 */
+        .record-card {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 1rem;
+            padding: 0.75rem;
+            font-size: 0.75rem;
+            cursor: pointer;
+            transition: border-color 0.2s ease;
+            margin-top: 0.5rem;
+        }
+        .record-card:hover {
+            border-color: var(--accent);
+        }
+
+        /* Modal 彈窗 */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 50;
+            background-color: rgba(0, 0, 0, 0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+        }
+
+        .modal-dialog {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 1.5rem;
+            width: 100%;
+            padding: 1.25rem;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.3);
+        }
+
+        /* Toast 提示 */
+        .toast-bubble {
+            pointer-events: auto;
+            max-width: 360px;
+            padding: 0.625rem 1rem;
+            border-radius: 1rem;
+            border: 1px solid var(--accent);
+            background-color: #1C1917;
+            color: #FDE68A;
+            font-size: 0.75rem;
+            font-weight: 700;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .toast-enter-active, .toast-leave-active { transition: all 0.25s ease; }
+        .toast-enter-from, .toast-leave-to { opacity: 0; transform: translateY(-15px); }
+
+        .modal-enter-active, .modal-leave-active { transition: all 0.2s ease; }
+        .modal-enter-from, .modal-leave-to { opacity: 0; transform: scale(0.96); }
+
+        /* 頁尾 */
+        .app-footer {
+            padding: 1rem 0 0.5rem 0;
+            text-align: center;
+            font-size: 11px;
+            color: var(--text-muted);
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+        .app-footer a {
+            color: var(--accent);
+            font-weight: 700;
+            text-decoration: none;
+        }
+        .app-footer a:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+
+    <div id="app" class="app-shell">
+        
+        <!-- 全局頂部 Toast 提示組件 -->
+        <div class="fixed top-5 inset-x-0 z-[9999] pointer-events-none flex justify-center px-4" style="position: fixed;">
+            <transition name="toast">
+                <div v-if="savedTip" class="toast-bubble">
+                    <svg class="icon-sm text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                    <span>{{ toastMsg }}</span>
+                </div>
+            </transition>
+        </div>
+
+        <!-- 1. 主操作卡片 (Dashboard) -->
+        <section class="card-panel">
+            
+            <!-- Top Bar -->
+            <header class="topbar">
+                <div class="brand-box">
+                    <img src="./icon.png" alt="收工未？ Logo" class="brand-logo">
+                    <span class="brand-title">收工未？</span>
+                </div>
+                
+                <div class="topbar-actions">
+                    <button @click="openSettings" class="btn-icon" title="系統備份與更新">
+                        <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                    </button>
+
+                    <button @click="toggleTheme" class="btn-icon" title="切換主題">
+                        <svg v-if="isDark" class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+                        <svg v-else class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/></svg>
+                    </button>
+
+                    <button @click="toggleHide" class="btn-icon" title="隱藏金額">
+                        <svg v-if="!isHidden" class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                        <svg v-else class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858-5.908a8.88 8.88 0 011.68-.138c4.478 0 8.268 2.943 9.542 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21M3 3l18 18"/></svg>
+                    </button>
+                </div>
+            </header>
+
+            <!-- 休息按鈕組 -->
+            <div class="break-actions">
+                <button @click="toggleSnake('toilet')" :disabled="!isWorking || isEnded" :class="[snakeType === 'toilet' ? 'active-toilet' : '']" class="btn-break">
+                    <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 4a1 1 0 011-1h12a1 1 0 011 1v5a1 1 0 01-1 1H6a1 1 0 01-1-1V4zM6 10v3a5 5 0 005 5h2a5 5 0 005-5v-3M10 18v3m4-3v3"/></svg>
+                    <span>{{ isSnaking && snakeType === 'toilet' ? '放完水返位' : '廁所 Break' }}</span>
+                </button>
+
+                <button @click="toggleSnake('chill')" :disabled="!isWorking || isEnded" :class="[snakeType === 'chill' ? 'active-chill' : '']" class="btn-break">
+                    <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    <span>{{ isSnaking && snakeType === 'chill' ? '停止蛇王' : '蛇王 Break' }}</span>
+                </button>
+            </div>
+
+            <!-- 計時看板區 -->
+            <div class="timer-stage">
+                <div v-if="!isWorking && !isEnded" class="standby-curtain">
+                    <span style="font-size: 0.875rem; font-weight: 700; margin-bottom: 0.25rem;">今日尚未開工</span>
+                    <p style="font-size: 0.75rem; color: var(--text-muted);">請點擊下方按鈕核對工時後開始工作</p>
+                </div>
+
+                <div class="timer-core" :style="{ opacity: (!isWorking && !isEnded) ? 0.3 : 1 }">
+                    <svg class="timer-svg" style="transform: rotate(-90deg);" viewBox="0 0 100 100">
+                        <circle cx="50" cy="50" r="42" stroke="var(--border)" stroke-width="5" fill="transparent" />
+                        <circle cx="50" cy="50" r="42" :stroke="isSnaking ? '#D97706' : 'var(--accent)'" stroke-width="5" stroke-dasharray="263.89" :stroke-dashoffset="dashOffset" stroke-linecap="round" fill="transparent" style="transition: all 1s linear;" />
+                    </svg>
+
+                    <div class="timer-caption">
+                        <span style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.125rem;">
+                            {{ isSnaking ? (snakeType === 'toilet' ? '🚽 廁所放水中' : '🐍 蛇王放空中') : (isEnded ? '🎉 今日已收工' : '距離放工仲有') }}
+                        </span>
+                        <span class="font-mono" style="font-size: 1.5rem; font-weight: 700; letter-spacing: -0.025em;">
+                            {{ isEnded ? '00:00:00' : (isSnaking ? snakeTimerText : countdownText) }}
+                        </span>
+                        
+                        <span v-if="isSnaking" class="badge-status font-mono" style="background-color: rgba(217,119,6,0.15); border-color: rgba(217,119,6,0.3); color: var(--accent);">
+                            白賺 {{ isHidden ? '••••' : '$' + currentSnakeEarnings.toFixed(2) }}
+                        </span>
+                        <span v-else class="badge-status font-mono">
+                            {{ isEnded ? '結算完成' : (isOffWork ? '非工時時段' : '已返工 ' + workedTimeText) }}
+                        </span>
+                    </div>
+                </div>
+
+                <div class="earnings-banner" :style="{ opacity: (!isWorking && !isEnded) ? 0.3 : 1 }">
+                    <div class="earning-col text-right">
+                        <span class="earning-subtitle">呢刻賺咗</span>
+                        <span class="earning-value font-mono" style="color: var(--accent);">
+                            {{ isHidden ? '••••' : '$' + (isEnded ? frozenEarnings : currentEarnings).toFixed(2) }}
+                        </span>
+                    </div>
+                    <span style="font-size: 1.25rem; opacity: 0.3;">/</span>
+                    <div class="earning-col text-left">
+                        <span class="earning-subtitle">今日總計</span>
+                        <span class="earning-value font-mono">
+                            {{ isHidden ? '••••' : '$' + (isEnded && endMode === 'current' ? frozenEarnings : totalEarnings).toFixed(2) }}
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 控制大按鈕 -->
+            <div class="cta-wrapper">
+                <button v-if="!isWorking && !isEnded" @click="openCheckWorkModal" class="btn-cta start">
+                    <svg class="icon-md" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                    <span>開始今日工作</span>
+                </button>
+                
+                <button v-else-if="isWorking && !isEnded" @click="openOffWorkModal" class="btn-cta stop">
+                    <svg class="icon-md" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                    <span>🏁 收工啦！</span>
+                </button>
+
+                <button v-else @click="resetDay" class="btn-cta reset">
+                    <svg class="icon-md" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                    <span>🔄 重新開始新一天</span>
+                </button>
+            </div>
+
+        </section>
+
+        <!-- 2. 今日返工成本與實收 -->
+        <section class="card-panel">
+            <header class="section-header">
+                <span style="font-weight: 700; display: flex; align-items: center; gap: 0.375rem;">
+                    <svg class="icon-sm" style="color: var(--danger);" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+                    今日返工成本與實收
+                </span>
+                <span style="font-size: 11px; color: var(--text-muted);">扣減開支後的真實收益</span>
+            </header>
+
+            <div style="margin-top: 0.5rem; font-size: 0.75rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.25rem 0; color: var(--text-muted);">
+                    <span>{{ isEnded ? '今日總毛利' : (payType === 'daily' ? '日薪毛利' : '目前累計毛利') }}</span>
+                    <span class="font-mono" style="font-weight: 700; color: var(--success);">
+                        {{ isHidden ? '••••' : '+$' + (isEnded ? frozenEarnings : currentEarnings).toFixed(2) }}
+                    </span>
+                </div>
+
+                <div v-if="expenseItems.length === 0" style="padding: 0.5rem; text-align: center; font-size: 11px; color: var(--text-muted); border: 1px dashed var(--border); border-radius: 0.75rem; margin: 0.5rem 0;">
+                    未有任何開支記錄，點擊下方按鈕自由新增
+                </div>
+
+                <!-- 逐項開銷項目 -->
+                <div v-for="(item, idx) in expenseItems" :key="item.id" class="expense-row">
+                    <input type="text" v-model="item.name" placeholder="項目名稱 (如 車費/午餐)" class="input-text" style="flex: 1;">
+                    <div style="display: flex; align-items: center; gap: 0.25rem; width: 7rem;">
+                        <span style="color: var(--danger); font-weight: 700;">-$</span>
+                        <input type="number" v-model.number="item.amount" placeholder="0" class="input-text font-mono" style="width: 100%; text-align: right;">
+                    </div>
+                    <button @click="removeExpenseItem(idx)" style="background: transparent; border: none; cursor: pointer; color: var(--text-muted); padding: 0.25rem;">
+                        <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                    </button>
+                </div>
+
+                <button @click="addExpenseItem" class="btn-outline-dashed">
+                    <span>+ 新增開支項目</span>
+                </button>
+
+                <div class="summary-divider">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span style="font-weight: 700;">扣除成本淨賺</span>
+                        <span class="font-mono" style="font-size: 0.875rem; font-weight: 700; color: var(--accent);">
+                            {{ isHidden ? '••••' : '$' + netEarnings.toFixed(2) }}
+                        </span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; font-size: 11px; color: var(--text-muted);">
+                        <span>新平均時薪 (實收/工時)</span>
+                        <span class="font-mono" style="font-weight: 700; color: var(--text-main);">
+                            {{ isHidden ? '••••' : '$' + realNetHourlyRate.toFixed(1) + '/h' }}
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 3. 歷史收工紀錄區 -->
+        <section class="card-panel">
+            <header class="section-header">
+                <div style="font-weight: 700; display: flex; align-items: center; gap: 0.375rem;">
+                    <svg class="icon-sm" style="color: var(--accent);" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    <span>歷史收工紀錄 (點擊展開詳細)</span>
+                </div>
+                <button v-if="historyRecords.length > 0" @click="showAllHistoryModal = true" style="background: transparent; border: none; cursor: pointer; color: var(--accent); font-size: 11px; font-weight: 700;">
+                    全部 ({{ historyRecords.length }}) &rarr;
+                </button>
+            </header>
+
+            <div v-if="historyRecords.length === 0" style="padding: 1.25rem 0; text-align: center; font-size: 0.75rem; color: var(--text-muted);">
+                暫無收工紀錄，每次撳「收工啦！」後會自動儲存於此
+            </div>
+
+            <div v-else style="margin-top: 0.5rem;">
+                <div v-for="record in historyRecords.slice(0, 5)" :key="record.id" class="record-card">
+                    <div style="display: flex; justify-content: space-between; align-items: center;" @click="toggleExpandRecord(record.id)">
+                        <div style="display: flex; align-items: center; gap: 0.375rem; flex-wrap: wrap;">
+                            <span style="color: var(--accent); font-weight: 700;">({{ record.jobTitle || '一般工作' }})</span>
+                            <span class="font-mono">{{ record.date }}</span>
+                            <span style="font-size: 10px; padding: 0.125rem 0.375rem; border-radius: 0.25rem; background-color: var(--bg-subtle); color: var(--text-muted);">{{ record.tag }}</span>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 0.375rem;">
+                            <span class="font-mono" style="font-weight: 700; color: var(--accent);">
+                                {{ isHidden ? '••••' : '$' + record.earnings.toFixed(2) }}
+                            </span>
+                            <svg class="icon-sm" :style="{ transform: expandedRecordId === record.id ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                        </div>
+                    </div>
+
+                    <!-- 展開明細 -->
+                    <div v-if="expandedRecordId === record.id" style="margin-top: 0.625rem; padding-top: 0.625rem; border-top: 1px solid var(--border); font-size: 11px; display: flex; flex-direction: column; gap: 0.375rem;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <span style="color: var(--text-muted);">備註：<strong>{{ record.jobTitle || '無' }}</strong></span>
+                            <button @click.stop="editJobTitle(record)" style="background: transparent; border: none; color: var(--accent); cursor: pointer; display: inline-flex; align-items: center; gap: 0.25rem; font-size: 10px;">
+                                <svg class="icon-sm" style="width: 0.875rem; height: 0.875rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                                <span>修改備註</span>
+                            </button>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; color: var(--text-muted);">
+                            <span>工時：{{ record.startTime }} - {{ record.endTime }}</span>
+                            <span>總時長：{{ record.workedTime }}</span>
+                        </div>
+                        <div class="font-mono" style="display: flex; justify-content: space-between; color: var(--accent);">
+                            <span>🚽 廁所：${{ record.toiletEarn ? record.toiletEarn.toFixed(2) : '0.00' }}</span>
+                            <span>🐍 蛇王：${{ record.chillEarn ? record.chillEarn.toFixed(2) : '0.00' }}</span>
+                        </div>
+                        <div v-if="record.expenses && record.expenses.length > 0" style="padding-top: 0.25rem; border-top: 1px dashed var(--border); color: var(--text-muted); font-size: 10px;">
+                            <div style="font-weight: 700;">開支清單：</div>
+                            <div v-for="(exp, eidx) in record.expenses" :key="eidx" style="display: flex; justify-content: space-between;">
+                                <span>• {{ exp.name }}</span>
+                                <span class="font-mono" style="color: var(--danger);">-${{ exp.amount }}</span>
+                            </div>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 0.375rem; border-top: 1px solid var(--border); font-weight: 700;">
+                            <span>實收淨薪：${{ (record.netEarnings !== undefined ? record.netEarnings : record.earnings).toFixed(2) }}</span>
+                            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                <span>淨時薪：${{ record.realNetHourlyRate ? record.realNetHourlyRate.toFixed(1) : '0.0' }}/h</span>
+                                <!-- 刪除按鈕 (SVG 垃圾桶圖標，帶確認機制) -->
+                                <button @click.stop="deleteRecord(record.id)" title="刪除此紀錄" style="background: rgba(225,29,72,0.1); border: none; border-radius: 0.375rem; color: var(--danger); cursor: pointer; padding: 0.25rem; display: inline-flex; align-items: center;">
+                                    <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 頁尾 -->
+        <footer class="app-footer">
+            <div>*本工具數據純屬娛樂及心理慰藉用途，數據只供參考</div>
+            <div>Made by <a href="https://ricky-lk.github.io/" target="_blank">Ricky-lk</a></div>
+            <div><a href="https://tally.so/r/rj9Wdp?tool=sau-gung-mei" target="_blank">聯絡（意見反映/問題回報/其他查詢）</a></div>
+        </footer>
+
+        <!-- 4. 彈窗 Modal 組件 -->
+
+        <!-- 開工前核對 Modal -->
+        <transition name="modal">
+            <div v-if="showCheckWorkModal" class="modal-overlay">
+                <div class="modal-dialog" style="max-width: 340px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border);">
+                        <h3 style="font-size: 0.875rem; font-weight: 700; display: flex; align-items: center; gap: 0.375rem;">
+                            <svg class="icon-sm" style="color: var(--accent);" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                            開工前核對資料
+                        </h3>
+                        <button @click="showCheckWorkModal = false" class="btn-icon">
+                            <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                        </button>
+                    </div>
+
+                    <div style="display: flex; flex-direction: column; gap: 0.75rem; margin-top: 0.75rem; font-size: 0.75rem;">
+                        <div>
+                            <label style="display: block; font-size: 10px; color: var(--text-muted); margin-bottom: 0.25rem;">工作名稱 / 備註</label>
+                            <input type="text" v-model="jobTitle" placeholder="例如：兼職咖啡師 / 剪片 Freelance" class="input-text" style="width: 100%;">
+                        </div>
+
+                        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.5rem;">
+                            <div>
+                                <label style="display: block; font-size: 10px; color: var(--text-muted); margin-bottom: 0.25rem;">開工時間 *</label>
+                                <input type="time" v-model="startTimeStr" class="input-text font-mono" style="width: 100%; text-align: center;">
+                            </div>
+                            <div>
+                                <label style="display: block; font-size: 10px; color: var(--text-muted); margin-bottom: 0.25rem;">放工時間 *</label>
+                                <input type="time" v-model="endTimeStr" class="input-text font-mono" style="width: 100%; text-align: center;">
+                            </div>
+                        </div>
+
+                        <div>
+                            <label style="display: block; font-size: 10px; color: var(--text-muted); margin-bottom: 0.25rem;">計薪方式</label>
+                            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.5rem;">
+                                <button @click="payType = 'hourly'" :style="{ backgroundColor: payType === 'hourly' ? 'var(--accent)' : 'var(--bg-subtle)', color: payType === 'hourly' ? '#FFF' : 'var(--text-main)', fontWeight: payType === 'hourly' ? '700' : 'normal' }" style="padding: 0.375rem; border-radius: 0.5rem; border: none; cursor: pointer;">按時薪</button>
+                                <button @click="payType = 'daily'" :style="{ backgroundColor: payType === 'daily' ? 'var(--accent)' : 'var(--bg-subtle)', color: payType === 'daily' ? '#FFF' : 'var(--text-main)', fontWeight: payType === 'daily' ? '700' : 'normal' }" style="padding: 0.375rem; border-radius: 0.5rem; border: none; cursor: pointer;">按日薪</button>
+                            </div>
+                        </div>
+
+                        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.375rem;">
+                            <div>
+                                <label style="display: block; font-size: 10px; color: var(--text-muted); margin-bottom: 0.25rem;">{{ payType === 'hourly' ? '時薪($) *' : '日薪($) *' }}</label>
+                                <input type="number" v-model.number="payAmount" placeholder="必填" class="input-text font-mono" style="width: 100%; text-align: center;">
+                            </div>
+                            <div>
+                                <label style="display: block; font-size: 10px; color: var(--text-muted); margin-bottom: 0.25rem;">額外鐘數</label>
+                                <input type="number" step="0.5" v-model.number="extraHours" placeholder="0" class="input-text font-mono" style="width: 100%; text-align: center;">
+                            </div>
+                            <div>
+                                <label style="display: block; font-size: 10px; color: var(--text-muted); margin-bottom: 0.25rem;">Bonus($)</label>
+                                <input type="number" v-model.number="extraBonus" placeholder="0" class="input-text font-mono" style="width: 100%; text-align: center;">
+                            </div>
+                        </div>
+
+                        <div style="padding-top: 0.5rem; border-top: 1px solid var(--border);">
+                            <div style="display: flex; align-items: center; justify-content: space-between;">
+                                <span style="font-size: 11px; font-weight: 500;">不計飯鐘（扣除時間）</span>
+                                <input type="checkbox" v-model="deductMeal" style="width: 1rem; height: 1rem; accent-color: var(--accent);">
+                            </div>
+                            <div v-if="deductMeal" style="margin-top: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
+                                <label style="font-size: 10px; color: var(--text-muted); white-space: nowrap;">食飯時間：</label>
+                                <input type="number" v-model.number="mealMinutes" placeholder="60" class="input-text font-mono" style="width: 100%; text-align: center;">
+                                <span style="font-size: 10px; color: var(--text-muted);">分鐘</span>
+                            </div>
+                        </div>
+
+                        <div v-if="setupError" style="color: var(--danger); font-size: 11px; text-align: center; font-weight: 700;">
+                            {{ setupError }}
+                        </div>
+                    </div>
+
+                    <button @click="confirmAndStartWork" class="btn-cta start" style="margin-top: 0.75rem; font-size: 0.75rem; padding: 0.625rem;">
+                        <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                        <span>確認資料並立即開工</span>
+                    </button>
+                </div>
+            </div>
+        </transition>
+
+        <!-- 系統備份與更新 Modal -->
+        <transition name="modal">
+            <div v-if="showSettingsModal" class="modal-overlay">
+                <div class="modal-dialog" style="max-width: 330px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border);">
+                        <h3 style="font-size: 0.875rem; font-weight: 700; display: flex; align-items: center; gap: 0.375rem;">
+                            <svg class="icon-sm" style="color: var(--accent);" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                            系統備份與更新
+                        </h3>
+                        <button @click="showSettingsModal = false" class="btn-icon">
+                            <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                        </button>
+                    </div>
+
+                    <div style="margin-top: 0.75rem; display: flex; flex-direction: column; gap: 0.625rem;">
+                        <div style="font-size: 11px; font-weight: 700; color: var(--text-muted);">資料備份 (JSON)</div>
+                        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.5rem;">
+                            <button @click="exportJSON" class="btn-break" style="font-weight: 700;">
+                                <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                                <span>匯出備份</span>
+                            </button>
+                            <label class="btn-break" style="font-weight: 700; cursor: pointer;">
+                                <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l4-4m0 0l4 4m-4-4v12"/></svg>
+                                <span>匯入還原</span>
+                                <input type="file" accept=".json" @change="importJSON" style="display: none;">
+                            </label>
+                        </div>
+                    </div>
+
+                    <div style="margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid var(--border); display: flex; flex-direction: column; gap: 0.625rem;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <span style="font-size: 11px; font-weight: 700; color: var(--text-muted);">目前版本</span>
+                            <span class="font-mono" style="font-size: 0.75rem; font-weight: 700; color: var(--accent);">{{ appVersion }}</span>
+                        </div>
+
+                        <button @click="checkForUpdate" :disabled="isCheckingUpdate" class="btn-break" style="width: 100%; font-weight: 700;">
+                            <svg class="icon-sm" :style="{ animation: isCheckingUpdate ? 'spin 1s linear infinite' : 'none' }" style="color: var(--accent);" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                            <span>{{ isCheckingUpdate ? '正在連線檢查...' : '檢查 GitHub 最新版本' }}</span>
+                        </button>
+
+                        <div v-if="updateFeedbackMsg" style="padding: 0.5rem; border-radius: 0.75rem; border: 1px solid; font-size: 0.75rem; text-align: center; font-weight: 700;">
+                            {{ updateFeedbackMsg }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </transition>
+
+        <!-- 收工結算確認 Modal -->
+        <transition name="modal">
+            <div v-if="showModal" class="modal-overlay">
+                <div class="modal-dialog" style="max-width: 300px; text-align: center;">
+                    <h3 style="font-size: 0.875rem; font-weight: 700;">🏁 確認要收工嗎？</h3>
+                    <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem;">請選擇今日薪酬結算方式：</p>
+                    
+                    <div style="margin-top: 0.75rem; display: flex; flex-direction: column; gap: 0.5rem;">
+                        <button @click="confirmOffWork('full')" class="btn-cta start" style="font-size: 0.75rem; padding: 0.625rem;">
+                            跟原本全日計算 (${{ totalEarnings.toFixed(2) }})
+                        </button>
+                        <button @click="confirmOffWork('current')" class="btn-break" style="font-weight: 700;">
+                            淨係去到呢刻 (${{ currentEarnings.toFixed(2) }})
+                        </button>
+                        <button @click="showModal = false" style="background: transparent; border: none; font-size: 11px; color: var(--text-muted); cursor: pointer; padding: 0.375rem;">
+                            取消，繼續返工
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </transition>
+
+        <!-- 全部歷史紀錄 Modal -->
+        <transition name="modal">
+            <div v-if="showAllHistoryModal" class="modal-overlay">
+                <div class="modal-dialog" style="max-width: 380px; max-height: 82vh; display: flex; flex-direction: column;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 0.625rem; border-bottom: 1px solid var(--border);">
+                        <h3 style="font-size: 0.875rem; font-weight: 700; display: flex; align-items: center; gap: 0.375rem;">
+                            <svg class="icon-sm" style="color: var(--accent);" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                            全部收工紀錄 ({{ historyRecords.length }})
+                        </h3>
+                        <button @click="showAllHistoryModal = false" class="btn-icon">
+                            <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                        </button>
+                    </div>
+                    
+                    <div v-if="historyRecords.length === 0" style="padding: 2.5rem 0; text-align: center; font-size: 0.75rem; color: var(--text-muted);">
+                        暫無收工紀錄
+                    </div>
+
+                    <div v-else style="overflow-y: auto; flex: 1; padding: 0.5rem 0; display: flex; flex-direction: column; gap: 0.5rem;">
+                        <div v-for="record in historyRecords" :key="record.id" class="record-card">
+                            <div style="display: flex; justify-content: space-between; align-items: flex-start;" @click="toggleExpandRecord(record.id)">
+                                <div>
+                                    <div style="display: flex; align-items: center; gap: 0.375rem; flex-wrap: wrap; font-weight: 700;">
+                                        <span style="color: var(--accent);">({{ record.jobTitle || '一般工作' }})</span>
+                                        <span class="font-mono">{{ record.date }}</span>
+                                        <span style="font-size: 10px; padding: 0.125rem 0.375rem; border-radius: 0.25rem; background-color: var(--bg-subtle); color: var(--text-muted);">{{ record.tag }}</span>
+                                    </div>
+                                    <div style="font-size: 10px; color: var(--text-muted); margin-top: 0.125rem;">
+                                        工時 {{ record.workedTime }}
+                                    </div>
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 0.375rem;">
+                                    <span class="font-mono" style="font-weight: 700; color: var(--accent);">
+                                        ${{ record.earnings.toFixed(2) }}
+                                    </span>
+                                    <button @click.stop="deleteRecord(record.id)" title="刪除此紀錄" style="background: rgba(225,29,72,0.1); border: none; border-radius: 0.375rem; color: var(--danger); cursor: pointer; padding: 0.25rem; display: inline-flex; align-items: center;">
+                                        <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div v-if="expandedRecordId === record.id" style="margin-top: 0.625rem; padding-top: 0.625rem; border-top: 1px solid var(--border); font-size: 11px; display: flex; flex-direction: column; gap: 0.375rem;">
+                                <div style="display: flex; justify-content: space-between; align-items: center;">
+                                    <span style="color: var(--text-muted);">備註：<strong>{{ record.jobTitle || '無' }}</strong></span>
+                                    <button @click.stop="editJobTitle(record)" style="background: transparent; border: none; color: var(--accent); cursor: pointer; display: inline-flex; align-items: center; gap: 0.25rem; font-size: 10px;">
+                                        <svg class="icon-sm" style="width: 0.875rem; height: 0.875rem;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                                        <span>修改備註</span>
+                                    </button>
+                                </div>
+                                <div class="font-mono" style="display: flex; justify-content: space-between; color: var(--accent);">
+                                    <span>🚽 廁所：${{ record.toiletEarn ? record.toiletEarn.toFixed(2) : '0.00' }}</span>
+                                    <span>🐍 蛇王：${{ record.chillEarn ? record.chillEarn.toFixed(2) : '0.00' }}</span>
+                                </div>
+                                <div v-if="record.expenses && record.expenses.length > 0" style="padding-top: 0.25rem; border-top: 1px dashed var(--border); color: var(--text-muted); font-size: 10px;">
+                                    <div style="font-weight: 700;">開支清單：</div>
+                                    <div v-for="(exp, eidx) in record.expenses" :key="eidx" style="display: flex; justify-content: space-between;">
+                                        <span>• {{ exp.name }}</span>
+                                        <span class="font-mono" style="color: var(--danger);">-${{ exp.amount }}</span>
+                                    </div>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 0.375rem; border-top: 1px solid var(--border); font-weight: 700;">
+                                    <span>淨賺：${{ (record.netEarnings !== undefined ? record.netEarnings : record.earnings).toFixed(2) }}</span>
+                                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                        <span>淨時薪：${{ record.realNetHourlyRate ? record.realNetHourlyRate.toFixed(1) : '0.0' }}/h</span>
+                                        <button @click.stop="deleteRecord(record.id)" title="刪除此紀錄" style="background: rgba(225,29,72,0.1); border: none; border-radius: 0.375rem; color: var(--danger); cursor: pointer; padding: 0.25rem; display: inline-flex; align-items: center;">
+                                            <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="padding-top: 0.625rem; border-top: 1px solid var(--border); display: flex; justify-content: space-between; gap: 0.5rem;">
+                        <button v-if="historyRecords.length > 0" @click="clearAllRecords" style="padding: 0.5rem 0.75rem; border-radius: 0.75rem; border: none; background: rgba(225,29,72,0.1); color: var(--danger); font-size: 0.75rem; font-weight: 700; cursor: pointer;">
+                            清空全部
+                        </button>
+                        <button @click="showAllHistoryModal = false" class="btn-cta start" style="font-size: 0.75rem; padding: 0.5rem 1.25rem; width: auto; margin-left: auto;">
+                            完成
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </transition>
+
+    </div>
+
+    <script>
+        const { createApp, ref, computed, onMounted, onUnmounted } = Vue;
+
+        const APP_VERSION = 'v0.0.1';
+
+        createApp({
+            setup() {
+                const appVersion = ref(APP_VERSION);
+                const isCheckingUpdate = ref(false);
+                const updateFeedbackMsg = ref('');
+
+                const jobTitle = ref(localStorage.getItem('pt_job_title') || '');
+                const payType = ref(localStorage.getItem('pt_pay_type') || 'hourly');
+                const payAmount = ref(localStorage.getItem('pt_pay_amount') ? Number(localStorage.getItem('pt_pay_amount')) : null);
+                const extraHours = ref(localStorage.getItem('pt_extra_hours') ? Number(localStorage.getItem('pt_extra_hours')) : null);
+                const extraBonus = ref(localStorage.getItem('pt_extra_bonus') ? Number(localStorage.getItem('pt_extra_bonus')) : null);
+                const startTimeStr = ref(localStorage.getItem('pt_start') || '');
+                const endTimeStr = ref(localStorage.getItem('pt_end') || '');
+                
+                const deductMeal = ref(localStorage.getItem('pt_deduct_meal') === 'true');
+                const mealMinutes = ref(localStorage.getItem('pt_meal_mins') ? Number(localStorage.getItem('pt_meal_mins')) : null);
+
+                const expenseItems = ref(JSON.parse(localStorage.getItem('pt_expense_items') || '[]'));
+
+                const isHidden = ref(localStorage.getItem('pt_hidden') === 'true');
+                const isDark = ref(localStorage.getItem('pt_theme') !== 'light');
+                
+                const showCheckWorkModal = ref(false);
+                const showSettingsModal = ref(false);
+                const setupError = ref('');
+
+                const now = ref(new Date());
+                const savedTip = ref(false);
+                const toastMsg = ref('');
+
+                const isWorking = ref(localStorage.getItem('pt_is_working') === 'true');
+
+                const historyRecords = ref(JSON.parse(localStorage.getItem('pt_history_records') || '[]'));
+                const showAllHistoryModal = ref(false);
+                const expandedRecordId = ref(null);
+
+                const showModal = ref(false);
+                const isEnded = ref(false);
+                const endMode = ref('full');
+                const frozenEarnings = ref(0);
+
+                const isSnaking = ref(false);
+                const snakeType = ref(null);
+                const snakeStartTime = ref(null);
+                const currentSessionSecs = ref(0);
+                const totalToiletSecs = ref(Number(localStorage.getItem('pt_toilet_secs')) || 0);
+                const totalChillSecs = ref(Number(localStorage.getItem('pt_chill_secs')) || 0);
+
+                let timer = null;
+                let toastTimer = null;
+
+                const applyTheme = (dark) => {
+                    if (dark) {
+                        document.documentElement.classList.add('dark');
+                        document.documentElement.style.backgroundColor = '#0A0D14';
+                        document.body.style.backgroundColor = '#0A0D14';
+                    } else {
+                        document.documentElement.classList.remove('dark');
+                        document.documentElement.style.backgroundColor = '#F8F6F0';
+                        document.body.style.backgroundColor = '#F8F6F0';
+                    }
+                };
+
+                const toggleTheme = () => {
+                    isDark.value = !isDark.value;
+                    localStorage.setItem('pt_theme', isDark.value ? 'dark' : 'light');
+                    applyTheme(isDark.value);
+                };
+
+                const toggleHide = () => {
+                    isHidden.value = !isHidden.value;
+                    localStorage.setItem('pt_hidden', isHidden.value);
+                };
+
+                const showToast = (msg) => {
+                    toastMsg.value = msg;
+                    if (toastTimer) clearTimeout(toastTimer);
+                    savedTip.value = true;
+                    toastTimer = setTimeout(() => { savedTip.value = false; }, 2600);
+                };
+
+                const toggleExpandRecord = (id) => {
+                    expandedRecordId.value = expandedRecordId.value === id ? null : id;
+                };
+
+                const editJobTitle = (record) => {
+                    const newTitle = prompt('請輸入新的工作名稱 / 備註：', record.jobTitle || '');
+                    if (newTitle !== null) {
+                        record.jobTitle = newTitle.trim() || '一般工作';
+                        localStorage.setItem('pt_history_records', JSON.stringify(historyRecords.value));
+                        showToast('備註已成功更新');
+                    }
+                };
+
+                const openSettings = () => {
+                    updateFeedbackMsg.value = '';
+                    showSettingsModal.value = true;
+                };
+
+                const openCheckWorkModal = () => {
+                    setupError.value = '';
+                    showCheckWorkModal.value = true;
+                };
+
+                const confirmAndStartWork = () => {
+                    if (!startTimeStr.value || !endTimeStr.value || !payAmount.value || payAmount.value <= 0) {
+                        setupError.value = '請完整填寫開工時間、放工時間及薪金！';
+                        return;
+                    }
+
+                    setupError.value = '';
+                    localStorage.setItem('pt_job_title', jobTitle.value.trim());
+                    localStorage.setItem('pt_pay_type', payType.value);
+                    localStorage.setItem('pt_pay_amount', payAmount.value);
+                    if (extraHours.value !== null) localStorage.setItem('pt_extra_hours', extraHours.value);
+                    if (extraBonus.value !== null) localStorage.setItem('pt_extra_bonus', extraBonus.value);
+                    localStorage.setItem('pt_start', startTimeStr.value);
+                    localStorage.setItem('pt_end', endTimeStr.value);
+                    localStorage.setItem('pt_deduct_meal', deductMeal.value);
+                    if (mealMinutes.value !== null) localStorage.setItem('pt_meal_mins', mealMinutes.value);
+
+                    isWorking.value = true;
+                    isEnded.value = false;
+                    localStorage.setItem('pt_is_working', 'true');
+                    now.value = new Date();
+                    showCheckWorkModal.value = false;
+                    showToast('🚀 今日開工！加油打工仔！');
+                };
+
+                const toggleSnake = (type) => {
+                    if (!isWorking.value || isEnded.value) return;
+
+                    if (isSnaking.value) {
+                        if (snakeType.value === 'toilet') totalToiletSecs.value += currentSessionSecs.value;
+                        if (snakeType.value === 'chill') totalChillSecs.value += currentSessionSecs.value;
+                        
+                        localStorage.setItem('pt_toilet_secs', totalToiletSecs.value);
+                        localStorage.setItem('pt_chill_secs', totalChillSecs.value);
+
+                        if (snakeType.value === type) {
+                            isSnaking.value = false;
+                            snakeType.value = null;
+                            snakeStartTime.value = null;
+                            currentSessionSecs.value = 0;
+                            return;
+                        }
+                    }
+
+                    isSnaking.value = true;
+                    snakeType.value = type;
+                    snakeStartTime.value = new Date();
+                    currentSessionSecs.value = 0;
+                };
+
+                const addExpenseItem = () => {
+                    expenseItems.value.push({ id: Date.now(), name: '', amount: null });
+                };
+
+                const removeExpenseItem = (index) => {
+                    expenseItems.value.splice(index, 1);
+                    localStorage.setItem('pt_expense_items', JSON.stringify(expenseItems.value));
+                };
+
+                const openOffWorkModal = () => { showModal.value = true; };
+
+                const confirmOffWork = (mode) => {
+                    if (isSnaking.value) {
+                        if (snakeType.value === 'toilet') totalToiletSecs.value += currentSessionSecs.value;
+                        if (snakeType.value === 'chill') totalChillSecs.value += currentSessionSecs.value;
+                        isSnaking.value = false;
+                    }
+
+                    endMode.value = mode;
+                    isEnded.value = true;
+                    isWorking.value = false;
+                    localStorage.removeItem('pt_is_working');
+
+                    const finalAmount = mode === 'full' ? totalEarnings.value : currentEarnings.value;
+                    frozenEarnings.value = finalAmount;
+                    showModal.value = false;
+
+                    const ratePerSec = effectiveHourlyRate.value / 3600;
+                    const toiletEarn = totalToiletSecs.value * ratePerSec;
+                    const chillEarn = totalChillSecs.value * ratePerSec;
+
+                    const nowD = new Date();
+                    const pad = (n) => String(n).padStart(2, '0');
+                    const dateStr = `${nowD.getFullYear()}-${pad(nowD.getMonth() + 1)}-${pad(nowD.getDate())}`;
+
+                    const newRecord = {
+                        id: Date.now(),
+                        date: dateStr,
+                        jobTitle: jobTitle.value.trim() || '一般工作',
+                        startTime: startTimeStr.value,
+                        endTime: endTimeStr.value,
+                        workedTime: workedTimeText.value,
+                        earnings: finalAmount,
+                        netEarnings: netEarnings.value,
+                        realNetHourlyRate: realNetHourlyRate.value,
+                        toiletEarn: toiletEarn,
+                        chillEarn: chillEarn,
+                        expenses: JSON.parse(JSON.stringify(expenseItems.value)),
+                        tag: mode === 'full' ? '全日結算' : '提早收工'
+                    };
+                    historyRecords.value.unshift(newRecord);
+                    localStorage.setItem('pt_history_records', JSON.stringify(historyRecords.value));
+                    showToast('🎉 今日已順利收工！辛苦晒！');
+                };
+
+                const resetDay = () => {
+                    isEnded.value = false;
+                    isWorking.value = false;
+                    totalToiletSecs.value = 0;
+                    totalChillSecs.value = 0;
+                    currentSessionSecs.value = 0;
+                    localStorage.removeItem('pt_toilet_secs');
+                    localStorage.removeItem('pt_chill_secs');
+                    localStorage.removeItem('pt_is_working');
+                    expenseItems.value = [];
+                    localStorage.removeItem('pt_expense_items');
+                    now.value = new Date();
+                    showToast('已重設為未開工狀態');
+                };
+
+                const deleteRecord = (id) => {
+                    if (confirm('確定要刪除呢筆收工紀錄？（刪除後無法還原）')) {
+                        historyRecords.value = historyRecords.value.filter(r => r.id !== id);
+                        localStorage.setItem('pt_history_records', JSON.stringify(historyRecords.value));
+                        showToast('已刪除該筆紀錄');
+                    }
+                };
+
+                const clearAllRecords = () => {
+                    if (confirm('確認清空全部歷史紀錄？')) {
+                        historyRecords.value = [];
+                        localStorage.removeItem('pt_history_records');
+                        showAllHistoryModal.value = false;
+                        showToast('已清空全部紀錄');
+                    }
+                };
+
+                const exportJSON = () => {
+                    const data = {
+                        version: APP_VERSION,
+                        exportDate: new Date().toISOString(),
+                        jobTitle: jobTitle.value,
+                        config: {
+                            payType: payType.value,
+                            payAmount: payAmount.value,
+                            extraHours: extraHours.value,
+                            extraBonus: extraBonus.value,
+                            startTimeStr: startTimeStr.value,
+                            endTimeStr: endTimeStr.value,
+                            deductMeal: deductMeal.value,
+                            mealMinutes: mealMinutes.value,
+                        },
+                        expenses: expenseItems.value,
+                        history: historyRecords.value
+                    };
+                    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `saugungmei-backup-${new Date().toISOString().slice(0,10)}.json`;
+                    a.click();
+                    URL.revokeObjectURL(a);
+                    showToast('備份 JSON 匯出成功！');
+                };
+
+                const importJSON = (e) => {
+                    const file = e.target.files[0];
+                    if (!file) return;
+                    const reader = new FileReader();
+                    reader.onload = (event) => {
+                        try {
+                            const data = JSON.parse(event.target.result);
+                            if (data.jobTitle) {
+                                jobTitle.value = data.jobTitle;
+                                localStorage.setItem('pt_job_title', jobTitle.value);
+                            }
+                            if (data.config) {
+                                payType.value = data.config.payType || 'hourly';
+                                payAmount.value = data.config.payAmount || null;
+                                startTimeStr.value = data.config.startTimeStr || '';
+                                endTimeStr.value = data.config.endTimeStr || '';
+                                deductMeal.value = !!data.config.deductMeal;
+                                mealMinutes.value = data.config.mealMinutes || null;
+
+                                localStorage.setItem('pt_pay_type', payType.value);
+                                if (payAmount.value !== null) localStorage.setItem('pt_pay_amount', payAmount.value);
+                                localStorage.setItem('pt_start', startTimeStr.value);
+                                localStorage.setItem('pt_end', endTimeStr.value);
+                                localStorage.setItem('pt_deduct_meal', deductMeal.value);
+                                if (mealMinutes.value !== null) localStorage.setItem('pt_meal_mins', mealMinutes.value);
+                            }
+                            if (data.history) {
+                                historyRecords.value = data.history;
+                                localStorage.setItem('pt_history_records', JSON.stringify(data.history));
+                            }
+                            if (data.expenses) {
+                                expenseItems.value = data.expenses;
+                                localStorage.setItem('pt_expense_items', JSON.stringify(data.expenses));
+                            }
+                            showToast('資料已成功匯入！');
+                        } catch(err) {
+                            showToast('匯入失敗：JSON 格式不符');
+                        }
+                    };
+                    reader.readAsText(file);
+                };
+
+                const checkForUpdate = async () => {
+                    isCheckingUpdate.value = true;
+                    updateFeedbackMsg.value = '正在連線 GitHub 檢查最新版本...';
+
+                    if ('serviceWorker' in navigator) {
+                        try {
+                            const updatePromise = (async () => {
+                                const reg = await navigator.serviceWorker.getRegistration();
+                                if (reg) {
+                                    await reg.update();
+                                    if (reg.waiting) return 'HAS_UPDATE';
+                                }
+                                return 'LATEST';
+                            })();
+
+                            const timeoutPromise = new Promise((resolve) => setTimeout(() => resolve('TIMEOUT'), 2500));
+                            const result = await Promise.race([updatePromise, timeoutPromise]);
+
+                            if (result === 'HAS_UPDATE') {
+                                updateFeedbackMsg.value = '🚀 發現新版本！點擊載入最新更新';
+                                if (confirm('發現 GitHub 最新版本！是否立即載入更新？')) {
+                                    const reg = await navigator.serviceWorker.getRegistration();
+                                    if (reg && reg.waiting) reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+                                    window.location.reload();
+                                }
+                            } else {
+                                updateFeedbackMsg.value = `✅ 目前已是最新版本 (${APP_VERSION})！`;
+                                showToast(`目前已是最新版本 (${APP_VERSION})`);
+                            }
+                        } catch (e) {
+                            updateFeedbackMsg.value = `✅ 目前已是最新版本 (${APP_VERSION})`;
+                        } finally {
+                            isCheckingUpdate.value = false;
+                        }
+                    } else {
+                        updateFeedbackMsg.value = `✅ 目前已是最新版本 (${APP_VERSION})`;
+                        isCheckingUpdate.value = false;
+                    }
+                };
+
+                onMounted(() => {
+                    applyTheme(isDark.value);
+                    timer = setInterval(() => { 
+                        if (!isEnded.value && isWorking.value) now.value = new Date();
+                        if (isSnaking.value && snakeStartTime.value) {
+                            currentSessionSecs.value = Math.floor((new Date() - snakeStartTime.value) / 1000);
+                        }
+                    }, 1000);
+
+                    if ('serviceWorker' in navigator) {
+                        navigator.serviceWorker.register('./sw.js').catch(err => {
+                            console.log('SW register failed:', err);
+                        });
+                    }
+                });
+
+                onUnmounted(() => { clearInterval(timer); });
+
+                const getStartAndEndDates = () => {
+                    if (!startTimeStr.value || !endTimeStr.value) return { start: new Date(), end: new Date() };
+
+                    const start = new Date(now.value);
+                    const [sh, sm] = startTimeStr.value.split(':');
+                    start.setHours(parseInt(sh) || 0, parseInt(sm) || 0, 0, 0);
+
+                    const end = new Date(now.value);
+                    const [eh, em] = endTimeStr.value.split(':');
+                    end.setHours(parseInt(eh) || 0, parseInt(em) || 0, 0, 0);
+
+                    if (end <= start) end.setDate(end.getDate() + 1);
+                    return { start, end };
+                };
+
+                const effectiveHourlyRate = computed(() => {
+                    if (!payAmount.value || !startTimeStr.value || !endTimeStr.value) return 0;
+                    const { start, end } = getStartAndEndDates();
+                    let totalBaseHours = (end - start) / 3600000;
+                    if (deductMeal.value) totalBaseHours -= (mealMinutes.value || 0) / 60;
+                    if (totalBaseHours <= 0) return 0;
+
+                    return payType.value === 'hourly' ? payAmount.value : payAmount.value / totalBaseHours;
+                });
+
+                const isOffWork = computed(() => {
+                    if (!startTimeStr.value || !endTimeStr.value) return true;
+                    const { start, end } = getStartAndEndDates();
+                    return now.value >= end || now.value < start;
+                });
+
+                const countdownText = computed(() => {
+                    if (!isWorking.value || !endTimeStr.value) return "--:--:--";
+                    const { end } = getStartAndEndDates();
+                    const diff = end - now.value;
+                    if (diff <= 0) return "00:00:00";
+                    const hours = Math.floor(diff / 3600000).toString().padStart(2, '0');
+                    const minutes = Math.floor((diff % 3600000) / 60000).toString().padStart(2, '0');
+                    const seconds = Math.floor((diff % 60000) / 1000).toString().padStart(2, '0');
+                    return `${hours}:${minutes}:${seconds}`;
+                });
+
+                const snakeTimerText = computed(() => {
+                    const s = currentSessionSecs.value;
+                    const hours = Math.floor(s / 3600).toString().padStart(2, '0');
+                    const minutes = Math.floor((s % 3600) / 60).toString().padStart(2, '0');
+                    const seconds = (s % 60).toString().padStart(2, '0');
+                    return `${hours}:${minutes}:${seconds}`;
+                });
+
+                const currentSnakeEarnings = computed(() => {
+                    const ratePerSec = effectiveHourlyRate.value / 3600;
+                    return currentSessionSecs.value * ratePerSec;
+                });
+
+                const workedTimeText = computed(() => {
+                    if (!isWorking.value || !startTimeStr.value) return "00:00";
+                    const { start } = getStartAndEndDates();
+                    let diff = now.value - start;
+                    if (diff <= 0) return "00:00";
+                    const hours = Math.floor(diff / 3600000).toString().padStart(2, '0');
+                    const minutes = Math.floor((diff % 3600000) / 60000).toString().padStart(2, '0');
+                    return `${hours}h ${minutes}m`;
+                });
+
+                const dashOffset = computed(() => {
+                    if (!isWorking.value || !startTimeStr.value || !endTimeStr.value) return 263.89;
+                    const { start, end } = getStartAndEndDates();
+                    const total = end - start;
+                    if (total <= 0) return 263.89;
+                    const elapsed = now.value - start;
+                    const progress = Math.min(Math.max(elapsed / total, 0), 1);
+                    return 263.89 * (1 - progress);
+                });
+
+                const currentEarnings = computed(() => {
+                    if (!isWorking.value || !startTimeStr.value || !endTimeStr.value) return 0;
+                    const { start, end } = getStartAndEndDates();
+                    const totalShiftSecs = (end - start) / 1000;
+                    let elapsedSecs = (now.value - start) / 1000;
+                    if (elapsedSecs <= 0 || totalShiftSecs <= 0) return 0;
+                    elapsedSecs = Math.min(elapsedSecs, totalShiftSecs);
+
+                    let effectiveElapsedSecs = elapsedSecs;
+                    if (deductMeal.value) {
+                        const mealSecs = (mealMinutes.value || 0) * 60;
+                        const netShiftSecs = Math.max(0, totalShiftSecs - mealSecs);
+                        effectiveElapsedSecs = elapsedSecs * (netShiftSecs / totalShiftSecs);
+                    }
+
+                    return effectiveElapsedSecs * (effectiveHourlyRate.value / 3600);
+                });
+
+                const totalEarnings = computed(() => {
+                    if (!startTimeStr.value || !endTimeStr.value || !payAmount.value) return 0;
+                    const { start, end } = getStartAndEndDates();
+                    let totalBaseHours = (end - start) / 3600000;
+                    if (deductMeal.value) totalBaseHours -= (mealMinutes.value || 0) / 60;
+                    if (totalBaseHours <= 0) return 0;
+
+                    const rate = effectiveHourlyRate.value;
+                    const bonus = extraBonus.value || 0;
+                    const hours = extraHours.value || 0;
+
+                    return ((totalBaseHours + hours) * rate) + bonus;
+                });
+
+                const totalCost = computed(() => {
+                    return expenseItems.value.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
+                });
+
+                const netEarnings = computed(() => {
+                    const gross = isEnded.value ? frozenEarnings.value : currentEarnings.value;
+                    return Math.max(0, gross - totalCost.value);
+                });
+
+                const realNetHourlyRate = computed(() => {
+                    if (!isWorking.value && !isEnded.value) return 0;
+                    const { start } = getStartAndEndDates();
+                    const workedHours = Math.max(0.1, (now.value - start) / 3600000);
+                    return netEarnings.value / workedHours;
+                });
+
+                return {
+                    appVersion, isCheckingUpdate, updateFeedbackMsg,
+                    jobTitle, editJobTitle,
+                    payType, payAmount, extraHours, extraBonus, startTimeStr, endTimeStr,
+                    deductMeal, mealMinutes, expenseItems, addExpenseItem, removeExpenseItem,
+                    totalCost, netEarnings, realNetHourlyRate,
+                    showCheckWorkModal, showSettingsModal, setupError,
+                    openCheckWorkModal, confirmAndStartWork, openSettings,
+                    exportJSON, importJSON, checkForUpdate,
+                    isWorking,
+                    countdownText, workedTimeText, currentEarnings, totalEarnings,
+                    savedTip, toastMsg, showToast, isHidden, toggleHide, dashOffset, isOffWork,
+                    isSnaking, snakeType, toggleSnake, snakeTimerText, currentSnakeEarnings,
+                    isDark, toggleTheme,
+                    showModal, isEnded, endMode, frozenEarnings, openOffWorkModal, confirmOffWork, resetDay,
+                    historyRecords, showAllHistoryModal, deleteRecord, clearAllRecords,
+                    expandedRecordId, toggleExpandRecord
+                };
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>

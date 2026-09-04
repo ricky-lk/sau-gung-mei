@@ -1,0 +1,16 @@
+{
+  "name": "收工未？ - 打工仔工時薪金計算器",
+  "short_name": "收工未？",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#0A0D14",
+  "theme_color": "#0A0D14",
+  "icons": [
+    {
+      "src": "icon.png",
+      "sizes": "192x192 512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
