@@ -12,7 +12,6 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="收工未？">
     <meta name="theme-color" content="#0A0D14">
-    <meta name="description" content="專為香港打工仔：Part-time、炒散及打造嘅「薪金計算同與心理慰藉神器」">
     <link rel="manifest" href="./manifest.json">
 
     <!-- Vue 3 -->
@@ -64,7 +63,7 @@
 
         .font-mono { font-family: 'JetBrains Mono', monospace; }
 
-        /* 🚨 核心修復：強制所有非計時圈的 SVG 圖標維持標準尺寸，絕對不許放大 */
+        /* 強制所有非計時圈的 SVG 圖標維持標準尺寸 */
         svg:not(.timer-svg) {
             width: 1.125rem !important;
             height: 1.125rem !important;
@@ -88,12 +87,15 @@
             outline: none;
         }
 
-        /* 語意化佈局結構 */
+        /* 🚨 核心修改：結合 iOS 頂部安全距離 (safe-area-inset-top)，預留充足空位 */
         .app-shell {
             width: 100%;
             max-width: 430px;
             margin: 0 auto;
-            padding: 36px 12px 24px 12px;
+            padding-top: calc(1.5rem + env(safe-area-inset-top, 24px));
+            padding-bottom: calc(1.5rem + env(safe-area-inset-bottom, 16px));
+            padding-left: 0.75rem;
+            padding-right: 0.75rem;
             display: flex;
             flex-direction: column;
             gap: 1rem;
@@ -400,25 +402,41 @@
             box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.3);
         }
 
-        /* Toast 提示 */
+        /* Toast 提示 (自動適應 safe-area-inset-top 避開動態島) */
+        .toast-container {
+            position: fixed;
+            top: calc(1rem + env(safe-area-inset-top, 20px));
+            left: 0;
+            right: 0;
+            z-index: 99999;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            pointer-events: none;
+            padding: 0 1rem;
+        }
+
         .toast-bubble {
             pointer-events: auto;
             max-width: 360px;
-            padding: 0.625rem 1rem;
+            width: 100%;
+            padding: 0.75rem 1rem;
             border-radius: 1rem;
             border: 1px solid var(--accent);
             background-color: #1C1917;
             color: #FDE68A;
             font-size: 0.75rem;
             font-weight: 700;
-            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.7);
             display: flex;
             align-items: center;
+            justify-content: center;
+            text-align: center;
             gap: 0.5rem;
         }
 
         .toast-enter-active, .toast-leave-active { transition: all 0.25s ease; }
-        .toast-enter-from, .toast-leave-to { opacity: 0; transform: translateY(-15px); }
+        .toast-enter-from, .toast-leave-to { opacity: 0; transform: translateY(-20px); }
 
         .modal-enter-active, .modal-leave-active { transition: all 0.2s ease; }
         .modal-enter-from, .modal-leave-to { opacity: 0; transform: scale(0.96); }
@@ -446,7 +464,7 @@
     <div id="app" class="app-shell">
         
         <!-- 全局頂部 Toast 提示組件 -->
-        <div class="fixed top-5 inset-x-0 z-[9999] pointer-events-none flex justify-center px-4" style="position: fixed;">
+        <div class="toast-container">
             <transition name="toast">
                 <div v-if="savedTip" class="toast-bubble">
                     <svg class="icon-sm text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
@@ -466,13 +484,8 @@
                 </div>
                 
                 <div class="topbar-actions">
-                    <button @click="openSettings" class="btn-icon" title="系統備份與更新">
+                    <button @click="openSettings" class="btn-icon" title="系統設定與更新">
                         <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-                    </button>
-
-                    <button @click="toggleTheme" class="btn-icon" title="切換主題">
-                        <svg v-if="isDark" class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
-                        <svg v-else class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/></svg>
                     </button>
 
                     <button @click="toggleHide" class="btn-icon" title="隱藏金額">
@@ -482,7 +495,7 @@
                 </div>
             </header>
 
-            <!-- 休息按鈕組 -->
+            <!-- 廁所 Break / 蛇王 Break 按鈕 -->
             <div class="break-actions">
                 <button @click="toggleSnake('toilet')" :disabled="!isWorking || isEnded" :class="[snakeType === 'toilet' ? 'active-toilet' : '']" class="btn-break">
                     <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 4a1 1 0 011-1h12a1 1 0 011 1v5a1 1 0 01-1 1H6a1 1 0 01-1-1V4zM6 10v3a5 5 0 005 5h2a5 5 0 005-5v-3M10 18v3m4-3v3"/></svg>
@@ -498,7 +511,7 @@
             <!-- 計時看板區 -->
             <div class="timer-stage">
                 <div v-if="!isWorking && !isEnded" class="standby-curtain">
-                    <span style="font-size: 0.875rem; font-weight: 700; margin-bottom: 0.25rem;">今日尚未開工</span>
+                    <span style="font-size: 0.875rem; font-weight: 700; margin-bottom: 0.25rem;">今日仲未開工</span>
                     <p style="font-size: 0.75rem; color: var(--text-muted);">請點擊下方按鈕核對工時後開始工作</p>
                 </div>
 
@@ -663,21 +676,22 @@
                             <span>總時長：{{ record.workedTime }}</span>
                         </div>
                         <div class="font-mono" style="display: flex; justify-content: space-between; color: var(--accent);">
-                            <span>🚽 廁所：${{ record.toiletEarn ? record.toiletEarn.toFixed(2) : '0.00' }}</span>
-                            <span>🐍 蛇王：${{ record.chillEarn ? record.chillEarn.toFixed(2) : '0.00' }}</span>
+                            <span>🚽 廁所白賺：${{ record.toiletEarn ? record.toiletEarn.toFixed(2) : '0.00' }}</span>
+                            <span>🐍 蛇王白賺：${{ record.chillEarn ? record.chillEarn.toFixed(2) : '0.00' }}</span>
                         </div>
+                        
                         <div v-if="record.expenses && record.expenses.length > 0" style="padding-top: 0.25rem; border-top: 1px dashed var(--border); color: var(--text-muted); font-size: 10px;">
-                            <div style="font-weight: 700;">開支清單：</div>
+                            <div style="font-weight: 700; color: var(--text-main);">開支清單：</div>
                             <div v-for="(exp, eidx) in record.expenses" :key="eidx" style="display: flex; justify-content: space-between;">
-                                <span>• {{ exp.name }}</span>
-                                <span class="font-mono" style="color: var(--danger);">-${{ exp.amount }}</span>
+                                <span>• {{ exp.name || '項目' }}</span>
+                                <span class="font-mono" style="color: var(--danger);">-${{ (exp.amount || 0).toFixed(2) }}</span>
                             </div>
                         </div>
+
                         <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 0.375rem; border-top: 1px solid var(--border); font-weight: 700;">
                             <span>實收淨薪：${{ (record.netEarnings !== undefined ? record.netEarnings : record.earnings).toFixed(2) }}</span>
                             <div style="display: flex; align-items: center; gap: 0.5rem;">
                                 <span>淨時薪：${{ record.realNetHourlyRate ? record.realNetHourlyRate.toFixed(1) : '0.0' }}/h</span>
-                                <!-- 刪除按鈕 (SVG 垃圾桶圖標，帶確認機制) -->
                                 <button @click.stop="deleteRecord(record.id)" title="刪除此紀錄" style="background: rgba(225,29,72,0.1); border: none; border-radius: 0.375rem; color: var(--danger); cursor: pointer; padding: 0.25rem; display: inline-flex; align-items: center;">
                                     <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
                                 </button>
@@ -776,21 +790,34 @@
             </div>
         </transition>
 
-        <!-- 系統備份與更新 Modal -->
+        <!-- 系統設定與更新 Modal (內含暗黑模式切換開關) -->
         <transition name="modal">
             <div v-if="showSettingsModal" class="modal-overlay">
                 <div class="modal-dialog" style="max-width: 330px;">
                     <div style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border);">
                         <h3 style="font-size: 0.875rem; font-weight: 700; display: flex; align-items: center; gap: 0.375rem;">
                             <svg class="icon-sm" style="color: var(--accent);" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-                            系統備份與更新
+                            系統設定與備份
                         </h3>
                         <button @click="showSettingsModal = false" class="btn-icon">
                             <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                         </button>
                     </div>
 
-                    <div style="margin-top: 0.75rem; display: flex; flex-direction: column; gap: 0.625rem;">
+                    <!-- 外觀模式切換 -->
+                    <div style="margin-top: 0.75rem; display: flex; flex-direction: column; gap: 0.5rem;">
+                        <div style="font-size: 11px; font-weight: 700; color: var(--text-muted);">外觀模式</div>
+                        <button @click="toggleTheme" class="btn-break" style="width: 100%; justify-content: space-between; font-weight: 700;">
+                            <span style="display: flex; align-items: center; gap: 0.5rem;">
+                                <svg v-if="isDark" class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/></svg>
+                                <svg v-else class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+                                <span>{{ isDark ? '暗黑模式 (Dark Mode)' : '明亮模式 (Light Mode)' }}</span>
+                            </span>
+                            <span style="font-size: 10px; padding: 0.125rem 0.375rem; border-radius: 0.25rem; background-color: var(--accent); color: #FFF;">切換</span>
+                        </button>
+                    </div>
+
+                    <div style="margin-top: 0.75rem; display: flex; flex-direction: column; gap: 0.5rem;">
                         <div style="font-size: 11px; font-weight: 700; color: var(--text-muted);">資料備份 (JSON)</div>
                         <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.5rem;">
                             <button @click="exportJSON" class="btn-break" style="font-weight: 700;">
@@ -816,7 +843,7 @@
                             <span>{{ isCheckingUpdate ? '正在連線檢查...' : '檢查 GitHub 最新版本' }}</span>
                         </button>
 
-                        <div v-if="updateFeedbackMsg" style="padding: 0.5rem; border-radius: 0.75rem; border: 1px solid; font-size: 0.75rem; text-align: center; font-weight: 700;">
+                        <div v-if="updateFeedbackMsg" style="padding: 0.5rem; border-radius: 0.75rem; border: 1px solid var(--border); font-size: 0.75rem; text-align: center; font-weight: 700;">
                             {{ updateFeedbackMsg }}
                         </div>
                     </div>
@@ -936,7 +963,7 @@
     <script>
         const { createApp, ref, computed, onMounted, onUnmounted } = Vue;
 
-        const APP_VERSION = 'v0.0.2';
+        const APP_VERSION = 'v0.0.3';
 
         createApp({
             setup() {
@@ -1255,29 +1282,18 @@
 
                     if ('serviceWorker' in navigator) {
                         try {
-                            const updatePromise = (async () => {
-                                const reg = await navigator.serviceWorker.getRegistration();
-                                if (reg) {
-                                    await reg.update();
-                                    if (reg.waiting) return 'HAS_UPDATE';
+                            const reg = await navigator.serviceWorker.getRegistration();
+                            if (reg) {
+                                await reg.update();
+                                if (reg.waiting) {
+                                    updateFeedbackMsg.value = '🚀 發現新版本！正在自動更新...';
+                                    reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+                                    setTimeout(() => window.location.reload(), 1000);
+                                    return;
                                 }
-                                return 'LATEST';
-                            })();
-
-                            const timeoutPromise = new Promise((resolve) => setTimeout(() => resolve('TIMEOUT'), 2500));
-                            const result = await Promise.race([updatePromise, timeoutPromise]);
-
-                            if (result === 'HAS_UPDATE') {
-                                updateFeedbackMsg.value = '🚀 發現新版本！點擊載入最新更新';
-                                if (confirm('發現 GitHub 最新版本！是否立即載入更新？')) {
-                                    const reg = await navigator.serviceWorker.getRegistration();
-                                    if (reg && reg.waiting) reg.waiting.postMessage({ type: 'SKIP_WAITING' });
-                                    window.location.reload();
-                                }
-                            } else {
-                                updateFeedbackMsg.value = `✅ 目前已是最新版本 (${APP_VERSION})！`;
-                                showToast(`目前已是最新版本 (${APP_VERSION})`);
                             }
+                            updateFeedbackMsg.value = `✅ 目前已是最新版本 (${APP_VERSION})！`;
+                            showToast(`目前已是最新版本 (${APP_VERSION})`);
                         } catch (e) {
                             updateFeedbackMsg.value = `✅ 目前已是最新版本 (${APP_VERSION})`;
                         } finally {
@@ -1298,9 +1314,30 @@
                         }
                     }, 1000);
 
+                    // 🚨 自動背景更新機制 (Auto Update Service Worker)
                     if ('serviceWorker' in navigator) {
-                        navigator.serviceWorker.register('./sw.js').catch(err => {
+                        navigator.serviceWorker.register('./sw.js').then((reg) => {
+                            reg.onupdatefound = () => {
+                                const installingWorker = reg.installing;
+                                installingWorker.onstatechange = () => {
+                                    if (installingWorker.state === 'installed') {
+                                        if (navigator.serviceWorker.controller) {
+                                            installingWorker.postMessage({ type: 'SKIP_WAITING' });
+                                            window.location.reload();
+                                        }
+                                    }
+                                };
+                            };
+                        }).catch(err => {
                             console.log('SW register failed:', err);
+                        });
+
+                        let refreshing = false;
+                        navigator.serviceWorker.addEventListener('controllerchange', () => {
+                            if (!refreshing) {
+                                refreshing = true;
+                                window.location.reload();
+                            }
                         });
                     }
                 });
